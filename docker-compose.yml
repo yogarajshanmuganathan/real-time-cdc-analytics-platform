@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Source Database (Transactional)
+  postgres-source:
+    image: postgres:15-alpine
+    container_name: postgres-source
+    environment:
+      POSTGRES_DB: transactional_db
+      POSTGRES_USER: source_user
+      POSTGRES_PASSWORD: source_password
+    ports:
+      - "5432:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    volumes:
+      - postgres_source_data:/var/lib/postgresql/data
+      - ./sql/01_source_schema.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./sql/02_procedures.sql:/docker-entrypoint-initdb.d/02_procedures.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U source_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cdc-network
+
+  # PostgreSQL Target Database (Analytics Warehouse)
+  postgres-warehouse:
+    image: postgres:15-alpine
+    container_name: postgres-warehouse
+    environment:
+      POSTGRES_DB: analytics_warehouse
+      POSTGRES_USER: warehouse_user
+      POSTGRES_PASSWORD: warehouse_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_warehouse_data:/var/lib/postgresql/data
+      - ./sql/03_warehouse_schema.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./sql/04_scd_type2.sql:/docker-entrypoint-initdb.d/02_scd.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cdc-network
+
+  # Apache Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - cdc-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - cdc-network
+
+  # Debezium Connect (CDC Platform)
+  kafka-connect:
+    image: debezium/connect:2.4
+    container_name: kafka-connect
+    depends_on:
+      - kafka
+      - postgres-source
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+    volumes:
+      - ./config/debezium-source.json:/config/debezium-source.json
+    networks:
+      - cdc-network
+
+  # Kafka UI (for monitoring)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - cdc-network
+
+volumes:
+  postgres_source_data:
+  postgres_warehouse_data:
+
+networks:
+  cdc-network:
+    driver: bridge

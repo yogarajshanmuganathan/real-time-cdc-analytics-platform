@@ -1,0 +1,45 @@
+{
+  "name": "postgres-cdc-source",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres-source",
+    "database.port": 5432,
+    "database.user": "source_user",
+    "database.password": "source_password",
+    "database.dbname": "transactional_db",
+    "database.server.name": "cdc.postgres.source",
+    "topic.prefix": "cdc",
+    
+    "table.include.list": "public.customers,public.products,public.orders,public.order_items,public.returns,public.inventory_movements",
+    "publication.name": "cdc_pub",
+    "slot.name": "cdc_slot",
+    
+    "plugin.name": "pgoutput",
+    "logical.decoding.work.mem": 64,
+    
+    "transforms": "route,unwrap",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$3",
+    
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.unwrap.drop.tombstones": "true",
+    
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": false,
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false,
+    
+    "errors.tolerance": "all",
+    "errors.log.enable": true,
+    "errors.log.include.messages": true,
+    
+    "max.batch.size": 2048,
+    "max.queue.size": 8192,
+    "poll.interval.ms": 1000,
+    "connection.timeout.ms": 30000,
+    "heartbeat.interval.ms": 10000,
+    "heartbeat.action.query": "SELECT 1"
+  }
+}
