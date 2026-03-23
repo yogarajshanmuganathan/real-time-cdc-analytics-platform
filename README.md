@@ -2,6 +2,13 @@
 
 **Enterprise-Grade Real-Time Data Warehouse** | PostgreSQL + Kafka + Debezium | SCD Type 2 Dimensions | Event-Driven Architecture
 
+
+## 🎯 Key Highlights
+
+- ⚡ Real-time CDC pipeline (<1s latency)
+- 🔄 Event-driven architecture using Kafka
+- 🧠 SCD Type 2 dimensional modeling
+- 🏗️ Production-grade data engineering design
 ---
 
 ## 📊 Project Overview
