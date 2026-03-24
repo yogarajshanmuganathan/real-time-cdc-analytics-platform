@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS dim_products (
     category VARCHAR(100),
     price DECIMAL(10, 2),
     status VARCHAR(50),
-    
+
     -- SCD Type 2 Tracking
     effective_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     end_date TIMESTAMP,

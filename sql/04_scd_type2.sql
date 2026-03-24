@@ -36,7 +36,7 @@ BEGIN
         );
         RAISE NOTICE 'Inserted new customer record: %', p_customer_id;
     ELSE
-        -- Check if any attributes changed
+        --Check if any attributes changed
         SELECT EXISTS (
             SELECT 1 FROM dim_customers
             WHERE customer_sk = v_current_sk

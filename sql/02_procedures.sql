@@ -3,7 +3,6 @@
 -- ============================================================================
 
 -- ===== DATA GENERATION PROCEDURES =====
-
 -- Procedure to insert sample customers
 CREATE OR REPLACE PROCEDURE generate_sample_customers(p_count INT DEFAULT 50)
 LANGUAGE plpgsql

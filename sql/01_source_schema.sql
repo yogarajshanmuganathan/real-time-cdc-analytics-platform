@@ -100,3 +100,4 @@ GRANT CONNECT ON DATABASE transactional_db TO source_user;
 GRANT USAGE ON SCHEMA public TO source_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO source_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO source_user;
+
